@@ -1,0 +1,37 @@
+---
+
+- name: Reset apk repositories
+  file:
+    path: /etc/apk/repositories
+    state: absent
+  tags:
+    - common
+    - alpine
+
+- name: Ensure apk repositories is present
+  file:
+    path: /etc/apk/repositories
+    state: touch
+  tags:
+    - common
+    - alpine
+
+- name: Set apk repositories
+  lineinfile:
+    path: /etc/apk/repositories
+    line: "{{ alpine_mirror }}/v{{ alpine_version }}/{{ item }}"
+  loop: "{{ alpine_repositories }}"
+  when: "{{ alpine_version }}" != "edge"
+  tags:
+    - common
+    - alpine
+
+- name: Set apk for edge repositories
+  lineinfile:
+    path: /etc/apk/repositories
+    line: "{{ alpine_mirror }}/{{ alpine_version }}/{{ item }}"
+  loop: "{{ alpine_repositories }}"
+  when: "{{ alpine_version }}" == "edge"
+  tags:
+    - common
+    - alpine

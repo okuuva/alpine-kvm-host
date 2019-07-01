@@ -1,0 +1,58 @@
+---
+
+alpine_kvm_host_user: spike
+alpine_kvm_host_cpu_vendor: amd
+
+alpine_kvm_host_packages:
+  - pciutils            # By default, lspci doesn't provide any human readable info
+  - pciutils-doc        # Readme just for the lulz
+  - ovmf                # UEFI code
+  - libvirt-qemu        # libvirt-qemu interop
+  - qemu-system-x86_64  # QEmu itself
+  - virt-install        # Easier virtual machine setup
+  - virt-viewer         # Connecting to virtual machine desktop remotely, used while installing
+  - py3-libvirt         # virt-install dependency
+  - py3-libxml2         # virt-install dependency
+  - bridge              # Network bridging
+  - dbus                # Needed for remotely connecting to guests
+  - polkit              # Needed for remotely connecting to guests
+
+alpine_kvm_host_services:
+    - dbus
+    - libvirtd
+
+alpine_kvm_host_modules:
+  - vfio
+  - vfio_iommu_type1
+  - vfio_pci
+  - vfio_virqfd
+  - vhost-net
+
+alpine_kvm_host_pci_ids:
+  - 1002:687f  # AMD Vega 64 Graphics (same id for both cards)
+  - 1002:aaf8  # AMD Vega 64 Audio (same id for both cards)
+  - 1022:145c  # USB controller
+
+alpine_kvm_host_hugepages: 15000
+
+alpine_kvm_host_hugepage_mount_point: /mnt/hugepages
+
+alpine_kvm_host_image_location: /var/lib/libvirt/images
+
+alpine_kvm_host_libvirt_polkit: |
+  "[Remote libvirt SSH access]
+    Identity=unix-group:libvirt
+    Action=org.libvirt.unix.manage
+    ResultAny=yes
+    ResultInactive=yes
+    ResultActive=yes"
+alpine_kvm_host_network_dev: eth0
+alpine_kvm_host_bridge: br0
+
+alpine_kvm_host_create_bridge: |
+  cat >> /etc/network/interfaces <<EOF
+
+  auto {{ alpine_kvm_host_bridge }}
+  iface {{ alpine_kvm_host_bridge }} inet dhcp
+      bridge_ports {{ alpine_kvm_host_network_dev }}
+  EOF

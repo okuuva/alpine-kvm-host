@@ -1,0 +1,150 @@
+---
+
+- name: Clone aports
+  become: yes
+  become_user: "{{ alpine_custom_kernel_user }}"
+  git:
+    repo: https://github.com/alpinelinux/aports
+    dest: "{{ alpine_custom_kernel_repo_location }}"
+    version: master
+  tags:
+    - alpine
+    - custom_kernel
+
+- name: Checkout branch
+  become: yes
+  become_user: "{{ alpine_custom_kernel_user }}"
+  command: "git checkout -Bf {{ alpine_custom_kernel_distro_version }}-custom origin/{{ alpine_custom_kernel_distro_version }}-stable"
+  args:
+    chdir: "{{ alpine_custom_kernel_repo_location }}"
+  when: alpine_custom_kernel_distro_version != "edge"
+  ignore_errors: yes
+  tags:
+    - alpine
+    - custom_kernel
+
+- name: Checkout master
+  become: yes
+  become_user: "{{ alpine_custom_kernel_user }}"
+  command: git checkout -B edge-custom origin/master
+  args:
+    chdir: "{{ alpine_custom_kernel_repo_location }}"
+  when: alpine_custom_kernel_distro_version == "edge"
+  ignore_errors: yes
+  tags:
+    - alpine
+    - custom_kernel
+
+- name: Apply patchfile
+  become: yes
+  become_user: "{{ alpine_custom_kernel_user }}"
+  patch:
+    src: "{{ alpine_custom_kernel_patchfile }}"
+    dest: "{{ alpine_custom_kernel_config_file }}"
+  tags:
+    - alpine
+    - custom_kernel
+
+- name: Generate checksums
+  become: yes
+  become_user: "{{ alpine_custom_kernel_user }}"
+  command: abuild checksum
+  args:
+    chdir: "{{ alpine_custom_kernel_config_location }}"
+  tags:
+    - alpine
+    - custom_kernel
+
+- name: Install build dependencies
+  become: yes
+  become_user: "{{ alpine_custom_kernel_user }}"
+  command: abuild deps
+  args:
+    chdir: "{{ alpine_custom_kernel_config_location }}"
+  tags:
+    - alpine
+    - custom_kernel
+
+- name: Remove old src
+  file:
+    path: "{{ alpine_custom_kernel_config_location }}/src"
+    state: absent
+  tags:
+    - alpine
+    - custom_kernel
+
+- name: Unpack sources
+  become: yes
+  become_user: "{{ alpine_custom_kernel_user }}"
+  command: abuild unpack
+  args:
+    chdir: "{{ alpine_custom_kernel_config_location }}"
+  tags:
+    - alpine
+    - custom_kernel
+
+- name: Apply patches
+  become: yes
+  become_user: "{{ alpine_custom_kernel_user }}"
+  command: abuild prepare
+  args:
+    chdir: "{{ alpine_custom_kernel_config_location }}"
+  tags:
+    - alpine
+    - custom_kernel
+
+- name: Compile kernel
+  become: yes
+  become_user: "{{ alpine_custom_kernel_user }}"
+  command: abuild build
+  args:
+    chdir: "{{ alpine_custom_kernel_config_location }}"
+  tags:
+    - alpine
+    - custom_kernel
+ 
+- name: Prepare package
+  become: yes
+  become_user: "{{ alpine_custom_kernel_user }}"
+  command: abuild package
+  args:
+    chdir: "{{ alpine_custom_kernel_config_location }}"
+  tags:
+    - alpine
+    - custom_kernel
+ 
+- name: Assemble the package into ~/packages
+  become: yes
+  become_user: "{{ alpine_custom_kernel_user }}"
+  command: abuild rootpkg
+  args:
+    chdir: "{{ alpine_custom_kernel_config_location }}"
+  tags:
+    - alpine
+    - custom_kernel
+ 
+- name: Regenerate package index
+  become: yes
+  become_user: "{{ alpine_custom_kernel_user }}"
+  command: abuild index
+  args:
+    chdir: "{{ alpine_custom_kernel_config_location }}"
+  tags:
+    - alpine
+    - custom_kernel
+
+- name: Install custom kernel
+  apk:
+    name: linux-vanilla
+    state: latest
+    repository: "{{ alpine_custom_kernel_pkg_repo }}"
+  tags:
+    - alpine
+    - custom_kernel
+
+- name: Reboot so that new kernel is enabled
+  reboot:
+  tags:
+    - alpine
+    - custom_kernel
+    - reboot

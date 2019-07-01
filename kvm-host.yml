@@ -1,0 +1,23 @@
+---
+
+- hosts: all
+  become: true
+  become_method: su
+  vars:
+    alpine_version: "3.10"
+    default_user_name: spike
+    alpine_packaging_user: "{{ default_user_name }}"
+    alpine_custom_kernel_user: "{{ default_user_name }}"
+    alpine_custom_kernel_distro_version: "{{ alpine_version }}"
+    alpine_kvm_host_user: "{{ default_user_name }}"
+    alpine_kvm_host_image_location: /var/lib/libvirt/images
+    windows_guest_run_user : "{{ default_user_name }}"
+    windows_guest_iso_dir: "{{ alpine_kvm_host_image_location }}"
+    windows_guest_ignore_msrs: yes
+  roles:
+    - alpine
+    - default-user
+    - alpine-packaging
+    - alpine-custom-kernel
+    - alpine-kvm-host
+    - windows-guest

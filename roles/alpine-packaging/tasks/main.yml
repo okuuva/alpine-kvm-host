@@ -1,0 +1,75 @@
+---
+
+- name: Install packages
+  apk:
+    name: "{{ alpine_packaging_packages }}"
+    state: latest
+    update_cache: yes
+  tags:
+    - alpine
+    - packaging
+
+- name: Add user to abuild group
+  user:
+    name: "{{ alpine_packaging_user }}"
+    groups: abuild
+    append: yes
+  tags:
+    - alpine
+    - packaging
+
+- name: Reboot so group changes come in affect
+  reboot:
+  tags:
+    - alpine
+    - packaging
+    - reboot
+
+- name: Set packager
+  lineinfile:
+    path: /etc/abuild.conf
+    regex: "PACKAGER="
+    line: 'PACKAGER="{{ alpine_packaging_packager }}"'
+  tags:
+    - alpine
+    - packaging
+
+- name: Set maintainer
+  lineinfile:
+    path: /etc/abuild.conf
+    regex: "MAINTAINER="
+    line: 'MAINTAINER="$PACKAGER"'
+  tags:
+    - alpine
+    - packaging
+
+- name: Create distfiles cache
+  file:
+    path: /var/cache/distfiles
+    state: directory
+    owner: "{{ alpine_packaging_user }}"
+    group: abuild
+    mode: "0770"
+  tags:
+    - alpine
+    - packaging
+
+- name: Generate security keys
+  become: yes
+  become_user: "{{ alpine_packaging_user }}"
+  command: abuild-keygen -a -i -n
+  tags:
+    - alpine
+    - packaging
+
+- name: Create local package locations
+  file:
+    path: "/home/{{ alpine_packaging_user }}/packages/{{ item }}"
+    state: directory
+    owner: "{{ alpine_packaging_user }}"
+    group: abuild
+    mode: "0770"
+  loop: "{{ alpine_packaging_repositories }}" 
+  tags:
+    - alpine
+    - packaging

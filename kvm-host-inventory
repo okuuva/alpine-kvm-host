@@ -1,0 +1,7 @@
+[kvm_host]
+pc ansible_host=192.168.1.100
+
+[kvm_host:vars]
+ansible_ssh_user=root
+ansible_become_password=""
+ansible_python_interpreter=/usr/bin/python3

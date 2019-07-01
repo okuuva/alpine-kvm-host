@@ -1,0 +1,26 @@
+---
+
+alpine_version: "3.10"
+
+alpine_mirror: http://alpine.mirror.far.fi
+
+alpine_repositories:
+  - main
+  - community
+
+alpine_packages:
+  - tmux
+  - curl
+  - wget
+  - git
+  - vim
+  - zsh
+  - zsh-vcs         # vcs_info module is not included in zsh but in this add-on package instead
+  - sudo
+  - bash
+  - openssh
+  - openssh-client  # no ssh client for you without this...
+  - openssh-sftp-server
+  - ncurses
+  - man
+  - man-pages

@@ -1,0 +1,130 @@
+---
+
+- name: Create guest iso dir
+  file:
+    path: "{{ windows_guest_iso_dir }}"
+    state: directory
+    group: libvirt
+    mode: "0775"
+  tags:
+    - windows-guest
+    - file-manipulation
+
+- name: Download virtio-cd.iso
+  get_url:
+    url: "{{ windows_guest_virtio.url }}"
+    dest: "{{ windows_guest_iso_dir }}/virtio.iso"
+    mode: "0660"
+  tags:
+    - download
+    - windows-guest
+    - file-manipulation
+
+- name: Check that Windows install iso is in place
+  file:
+    path: "{{ windows_guest_install_iso }}"
+    mode: "0660"
+  tags:
+    - windows-guest
+    - file-manipulation
+
+- name: Ignore msrs for this session
+  shell: echo 1 > /sys/module/kvm/parameters/ignore_msrs
+  when: windows_guest_ignore_msrs|bool
+  tags:
+    - windows-guest
+    - file-manipulation
+    - ignore-msrs
+    - amd
+
+- name: Ignore msrs permanently
+  lineinfile:
+    path: /etc/modprobe.d/kvm.conf
+    create: yes
+    regex: options kvm ignore_msrs
+    line: options kvm ignore_msrs=1
+  when: windows_guest_ignore_msrs|bool
+  tags:
+    - windows-guest
+    - file-manipulation
+    - ignore-msrs
+    - amd
+
+- name: Find virsh-nodedev ids
+  shell: "virsh nodedev-list | grep {{ item }}"
+  register: nodedev_ids
+  loop: "{{ windows_guest_pci_hosts }}"
+  tags:
+    - windows-guest
+    - passthrough
+    - template
+
+- name: Copy virt-install template
+  template:
+    src: templates/virt-install.sh.j2
+    owner: "{{ windows_guest_run_user }}"
+    dest: /home/{{ windows_guest_run_user }}/virt-install-win10.sh
+    mode: "0770"
+  tags:
+    - windows-guest
+    - file-manipulation
+    - template
+
+- name: Launch install
+  shell: /home/{{ windows_guest_run_user }}/virt-install-win10.sh
+  tags:
+    - windows-guest
+    - virsh
+    - install
+
+- name: Nuke USB device xml directory
+  file:
+    path: /home/{{ windows_guest_run_user }}/usb-device-xmls
+    state: absent
+  tags:
+    - windows-guest
+    - file-manipulation
+    - template
+
+- name: Create USB device xml directory
+  file:
+    path: /home/{{ windows_guest_run_user }}/usb-device-xmls
+    state: directory
+    owner: "{{ windows_guest_run_user }}"
+    group: libvirt
+    mode: "0775"
+  tags:
+    - windows-guest
+    - file-manipulation
+    - template
+
+- name: Copy USB device templates
+  template:
+    src: templates/usb-device.xml.j2
+    owner: "{{ windows_guest_run_user }}"
+    dest: /home/{{ windows_guest_run_user }}/usb-device-xmls/{{ item.key }}.xml
+    mode: "0660"
+  loop: "{{ lookup('dict', windows_guest_usb_devs) }}"
+  tags:
+    - windows-guest
+    - file-manipulation
+    - template
+
+- name: Get list of USB device xmls
+  find:
+    paths: /home/{{ windows_guest_run_user }}/usb-device-xmls
+    patterns: "*.xml"
+  register: usb_xmls
+  tags:
+    - windows-guest
+    - file-manipulation
+    - template
+
+- name: Attach USB devices
+  shell: virsh attach-device {{ windows_guest_vm.name }} --file {{ item.path }} --persistent
+  loop: "{{ usb_xmls.files }}"
+  tags:
+    - windows-guest
+    - file-manipulation
+    - template
+    - virsh

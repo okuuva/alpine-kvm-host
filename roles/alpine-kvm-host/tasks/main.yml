@@ -1,0 +1,217 @@
+---
+
+- name: Install packages
+  apk:
+    name: "{{ alpine_kvm_host_packages }}"
+    state: latest
+    update_cache: yes
+  tags:
+    - alpine
+    - kvm
+    - install-packages
+
+- name: Start services at boot
+  command: rc-update add {{ item }} boot
+  loop: "{{ alpine_kvm_host_services }}"
+  tags:
+    - alpine
+    - kvm
+    - services
+
+- name: Add user to groups
+  user:
+    name: "{{ alpine_kvm_host_user }}"
+    groups:
+      - libvirt
+      - kvm
+      - qemu
+    append: yes
+  tags:
+    - alpine
+    - kvm
+    - user-settings
+
+- name: Check that AMD IOMMU is enabled
+  command: dmesg | grep AMD-Vi
+  when: alpine_kvm_host_cpu_vendor == "amd"
+  tags:
+    - alpine
+    - kvm
+    - iommu
+    - amd
+
+- name: Check that Intel IOMMU is enabled
+  command: dmesg | grep "Directed I/O"
+  when: alpine_kvm_host_cpu_vendor == "intel"
+  tags:
+    - alpine
+    - kvm
+    - iommu
+    - intel
+
+- name: Set PCI passthrough modules
+  lineinfile:
+    path: /etc/modules-load.d/kvm.conf
+    create: yes
+    regex: "^{{ item }}$"
+    line: "{{ item }}"
+  loop: "{{ alpine_kvm_host_modules }}"
+  tags:
+    - alpine
+    - kvm
+    - pci-passthrough
+
+- name: Set vfio.conf
+  lineinfile:
+    path: /etc/modprobe.d/vfio.conf
+    create: yes
+    regex: options vfio-pci
+    line: "options vfio-pci ids={{ alpine_kvm_host_pci_ids | join(',') }}"
+  tags:
+    - alpine
+    - kvm
+    - pci-passthrough
+
+- name: Check that hugepages are supported
+  command: grep 'Hugepagesize:' /proc/meminfo
+  tags:
+    - alpine
+    - kvm
+    - hugepages
+
+- name: Set hugepages
+  lineinfile:
+    path: /etc/sysctl.conf
+    regex: "vm.nr_hugepages"
+    line: "vm.nr_hugepages = {{ alpine_kvm_host_hugepages }}"
+  tags:
+    - alpine
+    - kvm
+    - hugepages
+
+- name: Get qemu group number
+  shell: "getent group qemu | cut -d: -f3"
+  register: qemu_group_number
+  tags:
+    - alpine
+    - kvm
+    - hugepages
+
+- name: Set hugepages group
+  lineinfile:
+    path: /etc/sysctl.conf
+    regex: "vm.hugetlb_shm_group"
+    line: "vm.hugetlb_shm_group = {{ qemu_group_number.stdout }}"
+  tags:
+    - alpine
+    - kvm
+    - hugepages
+
+- name: Create hugepage mount point
+  file:
+    path: "{{ alpine_kvm_host_hugepage_mount_point }}"
+    state: directory
+    group: libvirt
+  tags:
+    - alpine
+    - kvm
+    - hugepages
+
+- name: Add hugetlbfs mount to fstab
+  lineinfile:
+    path: /etc/fstab
+    regex: hugetlbfs
+    line: hugetlbfs {{ alpine_kvm_host_hugepage_mount_point }} hugetlbfs defaults 0 0
+  tags:
+    - alpine
+    - kvm
+    - hugepages
+
+- name: Reboot to enable changes
+  reboot:
+  tags:
+    - alpine
+    - kvm
+    - reboot
+
+- name: Check if hugetlbfs is mounted
+  shell: mount | grep huge
+  register: hugetlbfs_mount
+  tags:
+    - alpine
+    - kvm
+    - hugepages
+
+- name: Check that vfio modules were loaded
+  shell: lsmod | grep vfio
+  tags:
+    - alpine
+    - kvm
+    - pci-passthrough
+
+- name: Check that PCI passthrough works
+  shell: "dmesg | grep 'vfio_pci: add'"
+  tags:
+    - alpine
+    - kvm
+    - pci-passthrough
+
+- name: Allow remote control of KVM over ssh
+  lineinfile:
+    path: /etc/polkit-1/localauthority/50-local.d/50-libvirt-ssh-remote-access-policy.pkla
+    create: yes
+    regex: "[Remote libvirt SSH access]"
+    line: "{{ alpine_kvm_host_libvirt_polkit }}"
+  tags:
+    - alpine
+    - kvm
+    - file-manipulation
+    - polkit
+
+- name: Do not autoup network interface
+  lineinfile:
+    path: /etc/network/interfaces
+    regex: auto {{ alpine_kvm_host_network_dev }}
+    state: absent
+  tags:
+    - alpine
+    - kvm
+    - network-config
+    - file-manipulation
+
+- name: Set network interface to manual mode
+  lineinfile:
+    path: /etc/network/interfaces
+    regex: iface {{ alpine_kvm_host_network_dev }} inet
+    line: iface {{ alpine_kvm_host_network_dev }} inet manual
+  tags:
+    - alpine
+    - kvm
+    - network-config
+    - file-manipulation
+
+- name: Check if bridge exists
+  command: "grep 'iface {{ alpine_kvm_host_bridge }}' /etc/network/interfaces"
+  register: br_exists
+  ignore_errors: yes
+  tags:
+    - alpine
+    - kvm
+    - network-config
+
+- name: Create bridge
+  shell: "{{ alpine_kvm_host_create_bridge }}"
+  when: br_exists.rc != 0  # Being explicit here since Python and Unix disagree on what counts as success
+  tags:
+    - alpine
+    - kvm
+    - network-config
+    - file-manipulation
+
+- name: Restart networking service
+  shell: rc-sercive networking restart
+  when: br_exists.rc != 0  # Being explicit here since Python and Unix disagree on what counts as success
+  tags:
+    - alpine
+    - kvm
+    - network-config

@@ -1,0 +1,67 @@
+---
+
+- name: Create default group
+  group:
+    name: "{{ default_user_name }}"
+    state: present
+  tags:
+    - default_user
+
+- name: Locate zsh
+  command: which zsh
+  register: zsh
+  tags:
+    - default_user
+
+- name: Create default user
+  user:
+    name: "{{ default_user_name }}"
+    group: "{{ default_user_name }}"
+    state: present
+    password: ""
+    shell: "{{ zsh.stdout }}"
+  register: user
+  tags:
+    - default_user
+
+- name: Unlock default user password
+  user:
+    name: "{{ user.name }}"
+    password_lock: no
+  tags:
+    - default_user
+
+- name: Add public key to defaul user's authorized_keys
+  lineinfile:
+    path: "{{ user.home }}/.ssh/authorized_keys"
+    create: yes
+    line: "{{ default_user_public_key }}"
+  tags:
+    - default_user
+
+- name: Set permissions for .ssh
+  file:
+    path: "{{ user.home }}/.ssh"
+    owner: "{{ user.name }}"
+    group: "{{ user.name }}"
+    mode: "0700"
+  tags:
+    - default_user
+
+- name: Set permissions for authorized_keys
+  file:
+    path: "{{ user.home }}/.ssh/authorized_keys"
+    owner: "{{ user.name }}"
+    group: "{{ user.name }}"
+    mode: "0600"
+  tags:
+    - default_user
+
+- name: Make default user a sudoer
+  lineinfile:
+    dest: /etc/sudoers
+    state: present
+    line: '{{ user.name }} ALL=(ALL) NOPASSWD:ALL'
+  tags:
+    - default_user
+

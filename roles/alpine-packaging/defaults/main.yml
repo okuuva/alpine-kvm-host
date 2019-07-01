@@ -1,0 +1,8 @@
+---
+
+alpine_packaging_packages:
+  - alpine-sdk
+
+alpine_packaging_user: spike
+
+alpine_packaging_packager: "Oula Kuuva <oula.kuuva@iki.fi>"

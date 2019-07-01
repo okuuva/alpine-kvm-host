@@ -1,0 +1,26 @@
+---
+
+- name: Setup apk preferences
+  include_tasks: apk-preferences.yml
+  tags:
+    - common
+    - alpine
+
+- name: Install common packages
+  apk:
+    name: "{{ alpine_packages }}"
+    state: latest
+    update_cache: yes
+  tags:
+    - common
+    - alpine
+
+- name: Only allow public key auth to SSH
+  lineinfile:
+    dest: /etc/ssh/sshd_config
+    state: present
+    regexp: 'PasswordAuthentication '
+    line: 'PasswordAuthentication no'
+  tags:
+    - common
+    - alpine

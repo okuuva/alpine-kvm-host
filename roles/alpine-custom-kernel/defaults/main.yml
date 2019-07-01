@@ -1,0 +1,13 @@
+---
+
+alpine_custom_kernel_user: spike
+
+alpine_custom_kernel_distro_version: "3.10"
+alpine_custom_kernel_arch: "x86_64"
+
+alpine_custom_kernel_repo_location: "/home/{{ alpine_custom_kernel_user }}/gits/aports"
+alpine_custom_kernel_config_location: "{{ alpine_custom_kernel_repo_location}}/main/linux-vanilla"
+alpine_custom_kernel_config_file: "{{ alpine_custom_kernel_config_location }}/config-vanilla.{{ alpine_custom_kernel_arch }}"
+alpine_custom_kernel_patchfile: ../files/patchfile
+
+alpine_custom_kernel_pkg_repo: "/home/{{ alpine_custom_kernel_user }}/packages/main"

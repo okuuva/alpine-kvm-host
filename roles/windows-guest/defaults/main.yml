@@ -1,0 +1,100 @@
+---
+
+# Doesn't really matter that much since we're going to use root for launching anyway
+# since I got permission problems with /sys/dev/bus/pci and didn't want to set them
+# every time host reboots (since /sys is always regenerated at boot). Not really kosher
+# but got fed up with banging my head against the wall.
+windows_guest_run_user: spike
+
+windows_guest_iso_dir: /var/lib/libvirt/images
+# Needs to be downloaded manually since Microsoft doesn't allow automatic downloads
+windows_guest_install_iso: "{{ windows_guest_iso_dir }}/win10.iso"
+
+# This should be left as false unless you get random bluescreens. I got one when install started
+# so had to set this to yes. Apparently changing cpu type from host-passthrough to host has fixed
+# those for some AMD users and setting it as core2duo or something like that has fixed it for some
+# Intel users but I was lazy and just enabled this.
+# The reason why this should be left as false is that apparently this can have some performance
+# impact on the guest but meh.
+# https://forum.level1techs.com/t/windows-10-1803-as-guest-with-qemu-kvm-bsod-under-install/127425/3
+windows_guest_ignore_msrs: no
+
+# VirtIO scsi drivers, need to install these first so that Windows guest can see other devices
+windows_guest_virtio:
+  stable: https://fedorapeople.org/groups/virt/virtio-win/direct-downloads/stable-virtio/virtio-win.iso
+  latest: https://fedorapeople.org/groups/virt/virtio-win/direct-downloads/latest-virtio/virtio-win.iso
+  url: "{{ windows_guest_virtio_latest }}"
+
+# Some guide said the following:
+# Don't use win10 as process name, for some inexplicable reason it doesn't work!
+# I trusted it without testing.
+# Other guide said that machine should be set to pc-q35-3.1, otherwise it defaults to pc-35-4.0
+# which can cause some problems. Again, did not test myself.
+# https://turlucode.com/qemu-4-0-0-released-windows-10-client-issues/
+windows_guest_vm:
+  name: windows10vm
+  machine: pc-q35-3.1
+
+windows_guest_cpu:
+  smp: 8
+  sockets: 1
+  cores: 4
+  threads: 2
+  topoext: "on"  # Needed for AMD Zen SMT
+
+windows_guest_memory: 20981  # 22GB in MiB
+
+# These have to be underscore delimitted in order to virsh nodedev-list grepping work
+windows_guest_pci_hosts:  
+  - "28_00_0"  # AMD Vega 64 VGA
+  - "28_00_1"  # AMD Vega 64 Sound card
+  - "2b_00_0"  # AMD Vega 64 VGA
+  - "2b_00_1"  # AMD Vega 64 Sound card
+  - "2c_00_3"  # msi x370 Gaming Pro IO-panel USB-SS controller
+
+windows_guest_usb_devs:
+  logitech:  # Logitech universal receiver
+    vendor: "0x046d"
+    product: "0xc53a"
+  bluetooth:  # Bluetooth dongle
+    vendor: "0x050d"
+    product: "0x065a"
+#  These aren't needed rn because I pass the whole USB controller
+#  orbweaver:  # Razer Orbweaver
+#    vendor: "0x1532"
+#    product: "0x0207"
+#  snowball:  # Blue Snowball
+#    vendor: "0x0d8c"
+#    product: "0x0005"
+#  switch:  # USB switch
+#    vendor: "0x1a40"
+#    product: "0x0101"
+#  keyboard:  # Microsoft Sculpt Trasceiver
+#    vendor: "0x045e"
+#    product: "0x07a5"
+#  vive:  # HTC Vive linkbox
+#    vendor: "0x0bb4"
+#    product: "0x2210"
+
+# These are distro related and should be checked and changed accordingly
+windows_guest_ovmf:
+  path: /usr/share/OVMF/OVMF_CODE.fd
+  vars: /usr/share/OVMF/OVMF_VARS.fd
+
+# Note that "lun" device type would be better when passing the whole block device but either
+# there's a bug in Alpine's libvirt, qemu (or both) or I did something wrong since I couldn't
+# get it working no matter what I did. virt-install always put scsi=on for it while qemu gave
+# an error and said that it should be off for virtio to work. Finally gave up and just changed
+# the device type to disk
+windows_guest_disks:
+  main:  # All the following elements must be defined
+    path: /dev/nvme0n1
+    device: disk
+    bus: virtio
+    cache: none
+    discard: unmap
+    format: raw
+    io: native
+
+windows_guest_host_network_dev: eth0
+windows_guest_bridge_id: br0
