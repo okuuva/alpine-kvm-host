@@ -30,12 +30,17 @@ windows_guest_virtio:
 # Said the following about vm name:
 # "Don't use win10 as process name, for some inexplicable reason it doesn't work!"
 # I trusted it without testing.
-# Other guide said that machine should be set to pc-q35-3.1, otherwise it defaults to pc-35-4.0
-# which can cause some problems. Again, did not test myself.
-# https://turlucode.com/qemu-4-0-0-released-windows-10-client-issues/
+# Other guide:
+# https://forums.linuxmint.com/viewtopic.php?f=231&t=212692
+# said that machine should be set to pc-q35-3.1, otherwise it defaults to pc-35-4.0 which can
+# cause some problems. I haven't encountered any but if you do change the type or try to set
+# ioapic driver to 'kvm'. Guide here:
+# https://wiki.archlinux.org/index.php/PCI_passthrough_via_OVMF#QEMU_4.0:_Unable_to_load_graphics_drivers/BSOD_after_driver_install_using_Q35
+# Couldn't figure a way to do it in virt-install so you need to manually add it using
+# `virsh edit`. Please prove me wrong and send a pull request :)
 windows_guest_vm:
   name: windows10vm
-  machine: pc-q35-3.1
+  machine: pc-q35-4.0
 
 # 'set' option determines which logical CPUs are used. For AMD Ryzen 1700X these are the first
 # 4 physical cores and their SMT/HT pairs. You can set it as "" if you want to libvirt to select
