@@ -18,7 +18,10 @@ machine={{ windows_guest_vm.machine }} \
 --qemu-commandline='-cpu host,topoext={{ windows_guest_cpu.topoext }}' \
 --vcpus sockets={{ windows_guest_cpu.sockets }},\
 cores={{ windows_guest_cpu.cores }},\
-threads={{ windows_guest_cpu.threads }} \
+threads={{ windows_guest_cpu.threads }}{% if windows_guest_cpu.set %},\
+cpuset="{{ windows_guest_cpu.set }}" \
+{% else %} \
+{% endif %}
 --memory {{ windows_guest_memory }} \
 --memorybacking hugepages=yes \
 {% for disk in windows_guest_disks.values() %}

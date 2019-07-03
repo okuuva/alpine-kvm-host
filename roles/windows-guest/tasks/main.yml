@@ -126,5 +126,4 @@
   tags:
     - windows-guest
     - file-manipulation
-    - template
     - virsh

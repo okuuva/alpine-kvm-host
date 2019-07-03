@@ -35,11 +35,16 @@ windows_guest_vm:
   name: windows10vm
   machine: pc-q35-3.1
 
+# 'set' option determines which logical CPUs are used. For AMD Ryzen 1700X these are the first
+# 4 physical cores and their SMT/HT pairs. You can set it as "" if you want to libvirt to select
+# the CPUs for you. Mind that passing physical cores and their corresponding pairs gives the best
+# performance. You can try to figure out the pairing using `virsh capabilities` command.
 windows_guest_cpu:
   smp: 8
   sockets: 1
   cores: 4
   threads: 2
+  set: "0-7"
   topoext: "on"  # Needed for AMD Zen SMT
 
 windows_guest_memory: 20981  # 22GB in MiB
